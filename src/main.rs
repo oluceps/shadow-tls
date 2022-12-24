@@ -8,16 +8,19 @@ mod sip003;
 mod stream;
 mod util;
 
-use std::{fmt::Display, rc::Rc, sync::Arc};
+use std::{fmt::Display, path::PathBuf, rc::Rc, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use monoio::net::TcpListener;
+use serde::Deserialize;
+use std::fs::read_to_string;
+use toml::from_str;
 use tracing::{error, info};
 use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*, EnvFilter};
 
 use crate::{client::ShadowTlsClient, server::ShadowTlsServer, util::mod_tcp_conn};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Deserialize)]
 #[clap(
     author,
     version,
@@ -29,9 +32,11 @@ struct Args {
     cmd: Commands,
     #[clap(flatten)]
     opts: Opts,
+    #[clap(short, long, help = "Set configuration file path")]
+    config: Option<String>,
 }
 
-#[derive(Parser, Debug, Default, Clone)]
+#[derive(Parser, Debug, Default, Clone, Deserialize)]
 pub struct Opts {
     #[clap(short, long, help = "Set parallelism manually")]
     threads: Option<u8>,
@@ -53,7 +58,7 @@ impl Display for Opts {
     }
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Deserialize)]
 enum Commands {
     #[clap(about = "Run client side")]
     Client {
@@ -96,8 +101,16 @@ enum Commands {
     },
 }
 
+fn read_profile(path: PathBuf) -> Option<Args> {
+    Some(
+        from_str::<Args>(&read_to_string(path).expect("read profile fail"))
+            .expect("profile format error"),
+    )
+}
 impl Args {
     async fn start(&self) {
+        let args_from_profile = &self.config.clone().map(|p| read_profile(p.into()));
+
         match &self.cmd {
             Commands::Client {
                 listen,
@@ -115,6 +128,7 @@ impl Args {
                 .await
                 .expect("client exited");
             }
+
             Commands::Server {
                 listen,
                 server_addr,

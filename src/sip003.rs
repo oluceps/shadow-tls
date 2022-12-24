@@ -59,6 +59,7 @@ pub(crate) fn get_sip003_arg() -> Option<Args> {
                 password: passwd.to_owned(),
             },
             opts: args_opts,
+            config: None,
         }
     } else {
         let host = opts
@@ -72,6 +73,7 @@ pub(crate) fn get_sip003_arg() -> Option<Args> {
                 password: passwd.to_owned(),
             },
             opts: args_opts,
+            config: None,
         }
     };
     Some(args)
